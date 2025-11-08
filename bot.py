@@ -143,6 +143,7 @@ def responder_mensaje(msg):
 
 
 # --- FLASK PARA RENDER (USANDO WEBHOOK) ---
+# --- FLASK PARA RENDER (USANDO WEBHOOK) ---
 app = Flask(__name__)
 
 @app.route('/')
@@ -160,7 +161,6 @@ def recibir_mensaje():
 @app.route('/healthz')
 def health_check():
     return "Bot is alive!", 200
-
 
 # --- EJECUCIÓN ---
 if __name__ == "__main__":
