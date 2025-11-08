@@ -1,7 +1,8 @@
 import telebot
 import pandas as pd
 from datetime import datetime
-from flask import Flask, request
+from flask import Flask
+import threading
 import os
 import matplotlib.pyplot as plt
 import io
@@ -10,15 +11,9 @@ import io
 TOKEN = "8357510901:AAE1JhJkBMR7cd9Ao0Navp34Xn7qGXoj8hU"
 bot = telebot.TeleBot(TOKEN)
 
-# --- HANDLER DE PRUEBA PARA DEBUG ---
-@bot.message_handler(func=lambda m: True)
-def test_responder(msg):
-    print("Intentando responder a:", msg.text)  # log para ver en Render
-    bot.reply_to(msg, "Recibido tu mensaje ✅")
-
 ARCHIVO = "movimientos.xlsx"
 
-# Si no existe el archivo, crear estructura inicial
+# Crear archivo si no existe
 try:
     df = pd.read_excel(ARCHIVO)
 except FileNotFoundError:
@@ -68,111 +63,46 @@ def saldo(msg):
     else:
         bot.reply_to(msg, f"📊 Tu saldo actual es: ${df['Saldo'].iloc[-1]:,.0f}")
 
-@bot.message_handler(commands=["resumen"])
-def resumen(msg):
-    if len(df) == 0:
-        bot.reply_to(msg, "Aún no tienes movimientos registrados 📭")
-        return
+# --- RESPUESTA A MENSAJES NORMALES ---
+@bot.message_handler(func=lambda message: True)
+def responder_mensaje(msg):
+    texto = msg.text.lower()
+    if "hola" in texto or "buenas" in texto:
+        respuesta = (
+            "👋 ¡Hola Juanma! Aquí tienes las opciones disponibles:\n\n"
+            "💵 *Registrar ingreso:* `/ingreso [monto] [descripción]`\n"
+            "💸 *Registrar gasto:* `/gasto [monto] [descripción]`\n"
+            "📊 *Ver saldo actual:* `/saldo`\n"
+            "📅 *Resumen del mes:* `/resumen`\n"
+            "📈 *Gráfica del mes:* `/grafica`\n"
+            "📆 *Historial mensual:* `/historial`\n\n"
+            "💬 Ejemplo: `/ingreso 50000 plata abuelos`"
+        )
+        bot.reply_to(msg, respuesta, parse_mode="Markdown")
+    else:
+        bot.reply_to(msg, "🤖 No reconozco ese comando. Escribe *Hola* para ver las opciones disponibles.", parse_mode="Markdown")
 
-    mes_actual = datetime.now().strftime("%Y-%m")
-    df_mes = df[df["Fecha"].str.startswith(mes_actual)]
-
-    if len(df_mes) == 0:
-        bot.reply_to(msg, "No tienes movimientos este mes 📅")
-        return
-
-    ingresos = df_mes[df_mes["Tipo"] == "Ingreso"]["Monto"].sum()
-    gastos = abs(df_mes[df_mes["Tipo"] == "Gasto"]["Monto"].sum())
-    ahorro = ingresos - gastos
-
-    respuesta = (
-        f"📊 *Resumen del mes {datetime.now().strftime('%B')}*\n\n"
-        f"💵 Ingresos: ${ingresos:,.0f}\n"
-        f"💸 Gastos: ${gastos:,.0f}\n"
-        f"💰 Ahorro: ${ahorro:,.0f}\n\n"
-        f"Último saldo: ${df['Saldo'].iloc[-1]:,.0f}"
-    )
-    bot.reply_to(msg, respuesta, parse_mode="Markdown")
-
-@bot.message_handler(commands=["grafica"])
-def enviar_grafica(msg):
-    try:
-        if len(df) == 0:
-            bot.reply_to(msg, "Aún no tienes datos registrados 📭")
-            return
-
-        df["Fecha"] = pd.to_datetime(df["Fecha"])
-        mes_actual = datetime.now().month
-        df_mes = df[df["Fecha"].dt.month == mes_actual]
-
-        if len(df_mes) == 0:
-            bot.reply_to(msg, "No hay movimientos en este mes 📅")
-            return
-
-        ingresos = df_mes[df_mes["Tipo"] == "Ingreso"]["Monto"].sum()
-        gastos = abs(df_mes[df_mes["Tipo"] == "Gasto"]["Monto"].sum())
-
-        etiquetas = ["Ingresos", "Gastos"]
-        valores = [ingresos, gastos]
-        colores = ["#4CAF50", "#E53935"]
-
-        fig, ax = plt.subplots()
-        ax.pie(valores, labels=etiquetas, autopct="%1.1f%%", colors=colores, startangle=90)
-        ax.axis("equal")
-        plt.title(f"Distribución de Ingresos y Gastos - {datetime.now().strftime('%B')}")
-
-        buffer = io.BytesIO()
-        plt.savefig(buffer, format="png")
-        buffer.seek(0)
-        plt.close(fig)
-
-        bot.send_photo(msg.chat.id, buffer)
-    except Exception as e:
-        bot.reply_to(msg, f"⚠️ Error al generar la gráfica: {e}")
-
-#@bot.message_handler(func=lambda message: True)
-#def responder_mensaje(msg):
-    #texto = msg.text.lower()
-    #if "hola" in texto or "buenas" in texto:
-       # respuesta = (
-            #"👋 ¡Hola Juanma! Aquí tienes las opciones disponibles:\n\n"
-           # "💵 *Registrar ingreso:* `/ingreso [monto] [descripción]`\n"
-           # "💸 *Registrar gasto:* `/gasto [monto] [descripción]`\n"
-            #"📊 *Ver saldo actual:* `/saldo`\n"
-            #"📅 *Resumen del mes:* `/resumen`\n"
-            #"📈 *Gráfica del mes:* `/grafica`\n\n"
-           # "💬 Ejemplo: `/ingreso 50000 plata abuelos`"
-       # )
-     #   bot.reply_to(msg, respuesta, parse_mode="Markdown")
-   # else:
-      #  bot.reply_to(msg, "🤖 No reconozco ese comando. Escribe *Hola* para ver las opciones disponibles.", parse_mode="Markdown")
-
-# --- FLASK PARA RENDER (USANDO WEBHOOK) ---
+# --- SERVIDOR FLASK SOLO PARA HEALTH CHECK ---
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "✅ Bot MiPlataJuanma corriendo en Render"
+    return "Bot funcionando correctamente ✅"
 
-@app.route(f"/{TOKEN}", methods=["POST"])
-def recibir_mensaje():
-    json_str = request.get_data().decode("UTF-8")
-    print("Recibido POST de Telegram:", json_str)  # <--- AGREGAR ESTA LÍNEA
-    update = telebot.types.Update.de_json(json_str)
-    print("Update parseado:", update)  # <--- AGREGAR ESTA LÍNEA
-    bot.process_new_updates([update])
-    return "!", 200
-
-# --- NUEVA RUTA PARA HEALTH CHECK ---
 @app.route('/healthz')
 def health_check():
     return "Bot is alive!", 200
 
 # --- EJECUCIÓN ---
-if __name__ == "__main__":
-    WEBHOOK_URL = f"https://botplatajuanma.onrender.com/{TOKEN}"
-    bot.remove_webhook()
-    bot.set_webhook(url=WEBHOOK_URL)
+def iniciar_bot():
+    print("🤖 Bot corriendo con polling...")
+    bot.polling(none_stop=True, interval=0)
 
-    #"port = int(os.environ.get("PORT", 10000))
-    #app.run(host="0.0.0.0", port=port)
+def run_flask():
+    port = int(os.environ.get("PORT", 10000))
+    print(f"🌐 Servidor Flask corriendo en el puerto {port}")
+    app.run(host="0.0.0.0", port=port)
+
+if __name__ == "__main__":
+    threading.Thread(target=iniciar_bot).start()
+    run_flask()
