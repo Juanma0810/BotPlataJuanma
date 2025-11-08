@@ -1,8 +1,7 @@
 import telebot
 import pandas as pd
 from datetime import datetime
-from flask import Flask
-import threading
+from flask import Flask, request
 import os
 import matplotlib.pyplot as plt
 import io
@@ -142,19 +141,27 @@ def responder_mensaje(msg):
     else:
         bot.reply_to(msg, "🤖 No reconozco ese comando. Escribe *Hola* para ver las opciones disponibles.", parse_mode="Markdown")
 
-# --- FLASK PARA RENDER ---
+
+# --- FLASK PARA RENDER (USANDO WEBHOOK) ---
 app = Flask(__name__)
 
 @app.route('/')
 def home():
     return "✅ Bot MiPlataJuanma corriendo en Render"
 
-def run_flask():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+@app.route(f"/{TOKEN}", methods=["POST"])
+def recibir_mensaje():
+    json_str = request.get_data().decode("UTF-8")
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return "!", 200
+
 
 # --- EJECUCIÓN ---
 if __name__ == "__main__":
-    threading.Thread(target=run_flask).start()
-    bot.polling(none_stop=True)
+    WEBHOOK_URL = f"https://botplatajuanma.onrender.com/{TOKEN}"
+    bot.remove_webhook()
+    bot.set_webhook(url=WEBHOOK_URL)
 
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
