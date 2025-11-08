@@ -208,4 +208,4 @@ def run_flask():
 
 if __name__ == "__main__":
     threading.Thread(target=iniciar_bot).start()
-    run_flask()
+    threading.Thread(target=run_flask).start()
