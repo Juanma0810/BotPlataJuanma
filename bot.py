@@ -10,6 +10,12 @@ import io
 TOKEN = "8357510901:AAE1JhJkBMR7cd9Ao0Navp34Xn7qGXoj8hU"
 bot = telebot.TeleBot(TOKEN)
 
+# --- HANDLER DE PRUEBA PARA DEBUG ---
+@bot.message_handler(func=lambda m: True)
+def test_responder(msg):
+    print("Intentando responder a:", msg.text)  # log para ver en Render
+    bot.reply_to(msg, "Recibido tu mensaje ✅")
+
 ARCHIVO = "movimientos.xlsx"
 
 # Si no existe el archivo, crear estructura inicial
@@ -124,30 +130,23 @@ def enviar_grafica(msg):
     except Exception as e:
         bot.reply_to(msg, f"⚠️ Error al generar la gráfica: {e}")
 
-@bot.message_handler(func=lambda message: True)
-def responder_mensaje(msg):
-    texto = msg.text.lower()
-    if "hola" in texto or "buenas" in texto:
-        respuesta = (
-            "👋 ¡Hola Juanma! Aquí tienes las opciones disponibles:\n\n"
-            "💵 *Registrar ingreso:* `/ingreso [monto] [descripción]`\n"
-            "💸 *Registrar gasto:* `/gasto [monto] [descripción]`\n"
-            "📊 *Ver saldo actual:* `/saldo`\n"
-            "📅 *Resumen del mes:* `/resumen`\n"
-            "📈 *Gráfica del mes:* `/grafica`\n\n"
-            "💬 Ejemplo: `/ingreso 50000 plata abuelos`"
-        )
-        bot.reply_to(msg, respuesta, parse_mode="Markdown")
-    else:
-        bot.reply_to(msg, "🤖 No reconozco ese comando. Escribe *Hola* para ver las opciones disponibles.", parse_mode="Markdown")
+#@bot.message_handler(func=lambda message: True)
+#def responder_mensaje(msg):
+    #texto = msg.text.lower()
+    #if "hola" in texto or "buenas" in texto:
+       # respuesta = (
+            #"👋 ¡Hola Juanma! Aquí tienes las opciones disponibles:\n\n"
+           # "💵 *Registrar ingreso:* `/ingreso [monto] [descripción]`\n"
+           # "💸 *Registrar gasto:* `/gasto [monto] [descripción]`\n"
+            #"📊 *Ver saldo actual:* `/saldo`\n"
+            #"📅 *Resumen del mes:* `/resumen`\n"
+            #"📈 *Gráfica del mes:* `/grafica`\n\n"
+           # "💬 Ejemplo: `/ingreso 50000 plata abuelos`"
+       # )
+     #   bot.reply_to(msg, respuesta, parse_mode="Markdown")
+   # else:
+      #  bot.reply_to(msg, "🤖 No reconozco ese comando. Escribe *Hola* para ver las opciones disponibles.", parse_mode="Markdown")
 
-# --- HANDLER DE PRUEBA PARA DEBUG ---
-@bot.message_handler(func=lambda m: True)
-def test_responder(msg):
-    print("Intentando responder a:", msg.text)  # log para ver en Render
-    bot.reply_to(msg, "Recibido tu mensaje ✅")
-
-# --- FLASK PARA RENDER (USANDO WEBHOOK) ---
 # --- FLASK PARA RENDER (USANDO WEBHOOK) ---
 app = Flask(__name__)
 
