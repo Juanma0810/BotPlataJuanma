@@ -1,6 +1,9 @@
 import telebot
 import pandas as pd
 from datetime import datetime
+from flask import Flask
+import threading
+import os
 
 # --- CONFIGURACIÓN ---
 TOKEN = "8357510901:AAE1JhJkBMR7cd9Ao0Navp34Xn7qGXoj8hU"
@@ -188,5 +191,21 @@ def responder_mensaje(msg):
         bot.reply_to(msg, "🤖 No reconozco ese comando. Escribe *Hola* para ver las opciones disponibles.", parse_mode="Markdown")
 
 # --- EJECUCIÓN ---
-print("🤖 Bot corriendo...")
-bot.polling()
+def iniciar_bot():
+    print("🤖 Bot corriendo...")
+    bot.polling(none_stop=True, interval=0)
+
+# --- SERVIDOR FLASK PARA RENDER ---
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot funcionando correctamente ✅"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+
+if __name__ == "__main__":
+    threading.Thread(target=iniciar_bot).start()
+    run_flask()
