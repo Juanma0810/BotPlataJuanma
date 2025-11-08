@@ -141,6 +141,11 @@ def responder_mensaje(msg):
     else:
         bot.reply_to(msg, "🤖 No reconozco ese comando. Escribe *Hola* para ver las opciones disponibles.", parse_mode="Markdown")
 
+# --- HANDLER DE PRUEBA PARA DEBUG ---
+@bot.message_handler(func=lambda m: True)
+def test_responder(msg):
+    print("Intentando responder a:", msg.text)  # log para ver en Render
+    bot.reply_to(msg, "Recibido tu mensaje ✅")
 
 # --- FLASK PARA RENDER (USANDO WEBHOOK) ---
 # --- FLASK PARA RENDER (USANDO WEBHOOK) ---
@@ -153,7 +158,9 @@ def home():
 @app.route(f"/{TOKEN}", methods=["POST"])
 def recibir_mensaje():
     json_str = request.get_data().decode("UTF-8")
+    print("Recibido POST de Telegram:", json_str)  # <--- AGREGAR ESTA LÍNEA
     update = telebot.types.Update.de_json(json_str)
+    print("Update parseado:", update)  # <--- AGREGAR ESTA LÍNEA
     bot.process_new_updates([update])
     return "!", 200
 
