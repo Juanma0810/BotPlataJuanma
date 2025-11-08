@@ -156,6 +156,11 @@ def recibir_mensaje():
     bot.process_new_updates([update])
     return "!", 200
 
+# --- NUEVA RUTA PARA HEALTH CHECK ---
+@app.route('/healthz')
+def health_check():
+    return "Bot is alive!", 200
+
 
 # --- EJECUCIÓN ---
 if __name__ == "__main__":
