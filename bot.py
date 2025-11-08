@@ -4,12 +4,13 @@ from datetime import datetime
 from flask import Flask
 import threading
 import os
+import matplotlib.pyplot as plt
+import io
 
 # --- CONFIGURACIÓN ---
 TOKEN = "8357510901:AAE1JhJkBMR7cd9Ao0Navp34Xn7qGXoj8hU"
 bot = telebot.TeleBot(TOKEN)
 
-# Archivo Excel donde se guardarán los movimientos
 ARCHIVO = "movimientos.xlsx"
 
 # Si no existe el archivo, crear estructura inicial
@@ -61,13 +62,13 @@ def saldo(msg):
         bot.reply_to(msg, "No tienes registros aún 💬")
     else:
         bot.reply_to(msg, f"📊 Tu saldo actual es: ${df['Saldo'].iloc[-1]:,.0f}")
+
 @bot.message_handler(commands=["resumen"])
 def resumen(msg):
     if len(df) == 0:
         bot.reply_to(msg, "Aún no tienes movimientos registrados 📭")
         return
 
-    # Tomar el mes y año actuales
     mes_actual = datetime.now().strftime("%Y-%m")
     df_mes = df[df["Fecha"].str.startswith(mes_actual)]
 
@@ -86,11 +87,7 @@ def resumen(msg):
         f"💰 Ahorro: ${ahorro:,.0f}\n\n"
         f"Último saldo: ${df['Saldo'].iloc[-1]:,.0f}"
     )
-
     bot.reply_to(msg, respuesta, parse_mode="Markdown")
-
-import matplotlib.pyplot as plt
-import io
 
 @bot.message_handler(commands=["grafica"])
 def enviar_grafica(msg):
@@ -99,10 +96,7 @@ def enviar_grafica(msg):
             bot.reply_to(msg, "Aún no tienes datos registrados 📭")
             return
 
-        # Convertir columna de fecha a tipo datetime
         df["Fecha"] = pd.to_datetime(df["Fecha"])
-
-        # Filtrar por mes actual
         mes_actual = datetime.now().month
         df_mes = df[df["Fecha"].dt.month == mes_actual]
 
@@ -110,11 +104,9 @@ def enviar_grafica(msg):
             bot.reply_to(msg, "No hay movimientos en este mes 📅")
             return
 
-        # Calcular totales
         ingresos = df_mes[df_mes["Tipo"] == "Ingreso"]["Monto"].sum()
         gastos = abs(df_mes[df_mes["Tipo"] == "Gasto"]["Monto"].sum())
 
-        # Crear la gráfica de pastel
         etiquetas = ["Ingresos", "Gastos"]
         valores = [ingresos, gastos]
         colores = ["#4CAF50", "#E53935"]
@@ -124,44 +116,6 @@ def enviar_grafica(msg):
         ax.axis("equal")
         plt.title(f"Distribución de Ingresos y Gastos - {datetime.now().strftime('%B')}")
 
-        # Guardar la imagen en memoria y enviarla al chat
-        buffer = io.BytesIO()
-        plt.savefig(buffer, format="png")
-        buffer.seek(0)
-        plt.close(fig)
-
-        bot.send_photo(msg.chat.id, buffer)
-    except Exception as e:
-        bot.reply_to(msg, f"⚠️ Error al generar la gráfica: {e}")
-
-@bot.message_handler(commands=["historial"])
-def grafica_historial(msg):
-    try:
-        if len(df) == 0:
-            bot.reply_to(msg, "Aún no tienes movimientos registrados 📭")
-            return
-
-        # Convertir la columna 'Fecha' a tipo datetime
-        df["Fecha"] = pd.to_datetime(df["Fecha"])
-
-        # Crear columna 'Mes-Año' para agrupar
-        df["Mes"] = df["Fecha"].dt.strftime("%Y-%m")
-
-        # Agrupar ingresos y gastos por mes
-        resumen = df.groupby(["Mes", "Tipo"])["Monto"].sum().unstack(fill_value=0)
-        resumen["Gasto"] = resumen.get("Gasto", 0).abs()  # valores positivos
-        resumen = resumen.sort_index()
-
-        # Crear gráfica de barras
-        fig, ax = plt.subplots(figsize=(8, 4))
-        resumen[["Ingreso", "Gasto"]].plot(kind="bar", ax=ax)
-        plt.title("Histórico mensual de ingresos y gastos")
-        plt.xlabel("Mes")
-        plt.ylabel("Monto ($)")
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-
-        # Guardar en memoria y enviar al chat
         buffer = io.BytesIO()
         plt.savefig(buffer, format="png")
         buffer.seek(0)
@@ -174,41 +128,33 @@ def grafica_historial(msg):
 @bot.message_handler(func=lambda message: True)
 def responder_mensaje(msg):
     texto = msg.text.lower()
-
-    if "hola" in texto or "buenas" in texto or "Menu" in texto:
+    if "hola" in texto or "buenas" in texto:
         respuesta = (
             "👋 ¡Hola Juanma! Aquí tienes las opciones disponibles:\n\n"
             "💵 *Registrar ingreso:* `/ingreso [monto] [descripción]`\n"
             "💸 *Registrar gasto:* `/gasto [monto] [descripción]`\n"
             "📊 *Ver saldo actual:* `/saldo`\n"
             "📅 *Resumen del mes:* `/resumen`\n"
-            "📈 *Gráfica del mes:* `/grafica`\n"
-            "📆 *Historial mensual:* `/historial`\n\n"
+            "📈 *Gráfica del mes:* `/grafica`\n\n"
             "💬 Ejemplo: `/ingreso 50000 plata abuelos`"
         )
         bot.reply_to(msg, respuesta, parse_mode="Markdown")
     else:
         bot.reply_to(msg, "🤖 No reconozco ese comando. Escribe *Hola* para ver las opciones disponibles.", parse_mode="Markdown")
 
-# --- EJECUCIÓN ---
-# --- EJECUCIÓN ---
-def iniciar_bot():
-    print("🤖 Bot corriendo...")
-    bot.polling(none_stop=True, interval=0)
-
-# --- SERVIDOR FLASK PARA RENDER ---
+# --- FLASK PARA RENDER ---
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Bot funcionando correctamente ✅"
+    return "✅ Bot MiPlataJuanma corriendo en Render"
 
 def run_flask():
     port = int(os.environ.get("PORT", 10000))
-    print(f"🌐 Servidor Flask corriendo en el puerto {port}")
     app.run(host="0.0.0.0", port=port)
 
+# --- EJECUCIÓN ---
 if __name__ == "__main__":
-    # Iniciar el bot y Flask en hilos separados
-    threading.Thread(target=iniciar_bot).start()
-    run_flask()
+    threading.Thread(target=run_flask).start()
+    bot.polling(none_stop=True)
+
