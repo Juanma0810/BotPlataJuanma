@@ -191,6 +191,7 @@ def responder_mensaje(msg):
         bot.reply_to(msg, "🤖 No reconozco ese comando. Escribe *Hola* para ver las opciones disponibles.", parse_mode="Markdown")
 
 # --- EJECUCIÓN ---
+# --- EJECUCIÓN ---
 def iniciar_bot():
     print("🤖 Bot corriendo...")
     bot.polling(none_stop=True, interval=0)
@@ -204,8 +205,10 @@ def home():
 
 def run_flask():
     port = int(os.environ.get("PORT", 10000))
+    print(f"🌐 Servidor Flask corriendo en el puerto {port}")
     app.run(host="0.0.0.0", port=port)
 
 if __name__ == "__main__":
+    # Iniciar el bot y Flask en hilos separados
     threading.Thread(target=iniciar_bot).start()
-    threading.Thread(target=run_flask).start()
+    run_flask()
